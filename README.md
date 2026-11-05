@@ -20,3 +20,10 @@ The source is a build recipe, not a prebuilt ISO. No Windows ATI binaries are in
 **USB caution:** writing the output image with a flashing tool will erase the **selected USB drive**. Verify the drive carefully before writing. Keep Lion and Windows 7 intact.
 
 Source ISO: https://cdimage.debian.org/cdimage/archive/12.0.0-live/amd64/iso-hybrid/debian-live-12.0.0-amd64-xfce.iso
+
+## AirPort Wi-Fi support (next build)
+The first successful build predates these changes. The next build includes NetworkManager, WPA supplicant, Debian's Broadcom firmware packages, b43/b43legacy firmware installers, and a staged `broadcom-sta-dkms` package as an **inactive** fallback. The optional `wl` module is NOT loaded by default or compiled: it needs compatible kernel headers, and enabling it too soon can blacklist/conflict with `b43`. Firmware downloads performed by b43 installers must succeed during the build for that firmware to be present offline.
+
+Run `sudo pearmac-wifi-report` once the new live image boots to identify AirPort's actual chip/driver and firmware loading. In the earlier Gentoo attempt, `wl` loaded but Wi-Fi operation was never demonstrated. Do not assume AirPort works until scanning and association succeed.
+
+Wi-Fi references: https://wiki.debian.org/bcm43xx and https://wiki.debian.org/wl
