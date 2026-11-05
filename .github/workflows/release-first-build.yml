@@ -22,14 +22,17 @@ jobs:
           ls -lah input
           test -s input/PearMac-iMac51-USB.img
           test -s input/SHA256SUMS
-          (cd input && sha256sum -c SHA256SUMS)
+          # The original build recorded /src/out/... in SHA256SUMS.
+          # Normalize it to a portable relative filename, then verify bytes.
+          sed -E 's@  .*/PearMac-iMac51-USB.img$@  PearMac-iMac51-USB.img@' input/SHA256SUMS > input/SHA256SUMS.portable
+          (cd input && sha256sum -c SHA256SUMS.portable)
       - name: Split image for release asset size limit
         run: |
           set -euo pipefail
           mkdir -p release
           split --bytes=1500M --numeric-suffixes=0 --suffix-length=2 \
             input/PearMac-iMac51-USB.img release/PearMac-iMac51-USB.img.part-
-          cp input/SHA256SUMS release/IMAGE-SHA256SUMS.txt
+          cp input/SHA256SUMS.portable release/IMAGE-SHA256SUMS.txt
           (cd release && sha256sum PearMac-iMac51-USB.img.part-* > PARTS-SHA256SUMS.txt)
           cat > release/README-REASSEMBLY.txt <<'EOF'
           PearMac Live v0.1.0-alpha.1 - first successful USB image build
