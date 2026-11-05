@@ -1,0 +1,41 @@
+name: Build offline Wi-Fi rescue
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rescue:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch offline Wi-Fi packages and extract Broadcom firmware
+        run: |
+          mkdir -p dist
+          docker run --rm -v "$PWD:/src" -w /src debian:bookworm bash -ceu '
+            export DEBIAN_FRONTEND=noninteractive
+            sed -i "s/ main$/ main contrib non-free non-free-firmware/" /etc/apt/sources.list.d/debian.sources || true
+            cat > /etc/apt/sources.list <<EOF
+          deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware
+          deb http://security.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware
+          deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware
+          EOF
+            apt-get update
+            mkdir -p /src/dist/pearmac-wifi-rescue/debs /src/dist/pearmac-wifi-rescue/firmware
+            apt-get -y -o APT::Keep-Downloaded-Packages=true --download-only install --no-install-recommends               network-manager network-manager-gnome wpasupplicant wireless-regdb               firmware-brcm80211 b43-fwcutter pciutils usbutils iw rfkill               firmware-b43-installer firmware-b43legacy-installer
+            cp -v /var/cache/apt/archives/*.deb /src/dist/pearmac-wifi-rescue/debs/
+            apt-get install -y --no-install-recommends firmware-b43-installer firmware-b43legacy-installer || true
+            for d in /lib/firmware/b43 /lib/firmware/b43legacy; do
+              if [ -d "$d" ]; then cp -a "$d" /src/dist/pearmac-wifi-rescue/firmware/; fi
+            done
+            find /src/dist/pearmac-wifi-rescue -type f | wc -l
+          '
+          cp addon/wifi-rescue/install.sh addon/wifi-rescue/wifi-report.sh addon/wifi-rescue/README.md dist/pearmac-wifi-rescue/
+          chmod +x dist/pearmac-wifi-rescue/*.sh
+          ( cd dist && zip -qr PearMac-WiFi-Rescue-offline.zip pearmac-wifi-rescue )
+      - name: Upload USB rescue kit
+        uses: actions/upload-artifact@v4
+        with:
+          name: PearMac-WiFi-Rescue-offline
+          path: dist/PearMac-WiFi-Rescue-offline.zip
+          retention-days: 14
