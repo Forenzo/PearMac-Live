@@ -23,7 +23,11 @@ jobs:
             apt-get update
             mkdir -p /src/dist/pearmac-wifi-rescue/debs /src/dist/pearmac-wifi-rescue/firmware
             apt-get -y -o APT::Keep-Downloaded-Packages=true --download-only install --no-install-recommends               network-manager network-manager-gnome wpasupplicant wireless-regdb               firmware-brcm80211 b43-fwcutter pciutils usbutils iw rfkill               firmware-b43-installer firmware-b43legacy-installer
-            cp -v /var/cache/apt/archives/*.deb /src/dist/pearmac-wifi-rescue/debs/\n            # Firmware installer packages try to download on the target, which is offline.\n            # We stage extracted firmware instead and omit those installers.\n            rm -f /src/dist/pearmac-wifi-rescue/debs/firmware-b43-installer*.deb\n            rm -f /src/dist/pearmac-wifi-rescue/debs/firmware-b43legacy-installer*.deb
+            cp -v /var/cache/apt/archives/*.deb /src/dist/pearmac-wifi-rescue/debs/
+            # Firmware installer packages try to download on the target, which is offline.
+            # We stage extracted firmware instead and omit those installers.
+            rm -f /src/dist/pearmac-wifi-rescue/debs/firmware-b43-installer*.deb
+            rm -f /src/dist/pearmac-wifi-rescue/debs/firmware-b43legacy-installer*.deb
             apt-get install -y --no-install-recommends firmware-b43-installer firmware-b43legacy-installer || true
             for d in /lib/firmware/b43 /lib/firmware/b43legacy; do
               if [ -d "$d" ]; then cp -a "$d" /src/dist/pearmac-wifi-rescue/firmware/; fi
