@@ -1,0 +1,85 @@
+name: Publish first PearMac prototype
+on:
+  push:
+    paths:
+      - .github/workflows/release-first-build.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    steps:
+      - name: Download successful first-build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p input
+          gh run download 42072869303 --repo "${{ github.repository }}" --name PearMac-iMac51-USB-prototype --dir input
+          ls -lah input
+          test -s input/PearMac-iMac51-USB.img
+          test -s input/SHA256SUMS
+          (cd input && sha256sum -c SHA256SUMS)
+      - name: Split image for release asset size limit
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          split --bytes=1500M --numeric-suffixes=0 --suffix-length=2 \
+            input/PearMac-iMac51-USB.img release/PearMac-iMac51-USB.img.part-
+          cp input/SHA256SUMS release/IMAGE-SHA256SUMS.txt
+          (cd release && sha256sum PearMac-iMac51-USB.img.part-* > PARTS-SHA256SUMS.txt)
+          cat > release/README-REASSEMBLY.txt <<'EOF'
+          PearMac Live v0.1.0-alpha.1 - first successful USB image build
+          Original GitHub Actions run: 42072869303
+          Source commit: 4e6117f846c8b52c4445e5b67ced3b8ed76c2d8a
+
+          Download all PearMac-iMac51-USB.img.part-* files, plus the checksums,
+          into the same folder on your MacBook.
+
+          On macOS Terminal:
+            cat PearMac-iMac51-USB.img.part-* > PearMac-iMac51-USB.img
+            shasum -a 256 PearMac-iMac51-USB.img
+          Compare the checksum against IMAGE-SHA256SUMS.txt.
+
+          IMPORTANT: This image has not been proven to boot on Apple EFI32
+          or initialize the Radeon X1600; keep Lion/Windows 7 untouched.
+          Flashing erases the selected USB device.
+          Later driver and Wi-Fi changes are NOT included in this version.
+          EOF
+          cat > release-notes.md <<'EOF'
+          ## PearMac Live v0.1.0-alpha.1 — first generated live USB
+
+          First successful automated Debian 12 XFCE remaster for Intel iMac5,1,
+          assembled by GitHub Actions run #1 on November 5, 2026.
+
+          **Experimental, not boot-verified.** EFI32-to-amd64 startup, Radeon
+          X1600 hardware acceleration, and AirPort Wi-Fi remain unverified.
+          This release is pinned to source commit
+          `4e6117f846c8b52c4445e5b67ced3b8ed76c2d8a`.
+
+          The USB image is split into numbered pieces to meet GitHub's 2 GiB
+          per-asset limit. Download every `.part-*` file and the README,
+          concatenate parts in filename order, and compare the final image's
+          SHA256 against `IMAGE-SHA256SUMS.txt`.
+
+          Later Wi-Fi rescue and driver changes are **not** included here.
+          EOF
+          ls -lah release/
+      - name: Publish private pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=v0.1.0-alpha.1
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            echo "Release already exists; no overwrite performed."
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --target 4e6117f846c8b52c4445e5b67ced3b8ed76c2d8a \
+            --title "PearMac Live v0.1.0 Alpha 1 — First USB prototype" \
+            --prerelease --notes-file release-notes.md release/*
