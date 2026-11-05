@@ -1,0 +1,43 @@
+name: Simplify Alpha 1 release downloads
+on:
+  push:
+    paths:
+      - .github/workflows/alpha1-downloads.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update-release:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Put the complete image download first
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > /tmp/release-notes.md <<'EOF'
+          ## PearMac Live v0.1.0 Alpha 1 — USB prototype
+
+          **Download the complete image in one click (recommended):**
+          [PearMac Alpha 1 complete image — GitHub Actions artifact](https://github.com/Forenzo/PearMac-Live/actions/runs/42072869303/artifacts/13439471933)
+
+          This is **one ZIP download** containing the full `PearMac-iMac51-USB.img`
+          file, a checksum, and build information. Extract the ZIP to obtain
+          a single image; no concatenating or joining required.
+
+          **Important:** GitHub Actions artifacts expire (original artifact
+          currently scheduled to expire November 12, 2026). The numbered
+          release assets below are archival backup copies because GitHub
+          Releases limits individual uploaded assets to 2 GiB. You do not
+          need them if the complete Actions artifact is available.
+
+          This is an experimental Debian 12 XFCE live-USB prototype for
+          Intel iMac5,1. The source was pinned to commit
+          `4e6117f846c8b52c4445e5b67ced3b8ed76c2d8a`.
+          EFI32 boot, Radeon acceleration and AirPort operation are not
+          yet validated. It does not include later wireless-rescue work.
+
+          **Flash only the extracted `.img`**, and double-check the
+          selected USB drive: flashing will erase that USB device.
+          Do not write this disk image to a DVD.
+          EOF
+          gh release edit v0.1.0-alpha.1 --repo "${{ github.repository }}" --notes-file /tmp/release-notes.md
