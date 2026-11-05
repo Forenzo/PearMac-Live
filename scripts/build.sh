@@ -33,7 +33,9 @@ chroot "$W/root" apt-get install -y --no-install-recommends \
  firmware-atheros firmware-misc-nonfree \
  mesa-utils pciutils usbutils lshw ethtool iw wireless-tools \
  alsa-utils pavucontrol bluez rfkill lm-sensors \
- smartmontools hdparm evtest xinput v4l-utils
+ smartmontools hdparm evtest xinput v4l-utils \
+ network-manager network-manager-gnome wpasupplicant wireless-regdb \
+ b43-fwcutter
 # Broadcom b43 firmware is extracted separately from vendor packages.
 # Do not fail the whole ISO build if this optional downloader is unavailable.
 if chroot "$W/root" apt-get install -y --no-install-recommends firmware-b43-installer; then
@@ -42,7 +44,41 @@ else
  echo 'WARNING: optional b43 firmware installer unavailable; exact AirPort chipset needs checking'
  chroot "$W/root" apt-get -f install -y || true
 fi
-mkdir -p "$W/root/usr/local/bin"
+# Prepare Broadcom legacy firmware too, for older AirPort revisions.
+# It is safe alongside b43 firmware: no proprietary wl module is activated.
+if chroot "$W/root" apt-get install -y --no-install-recommends firmware-b43legacy-installer; then
+ echo 'b43legacy firmware installer succeeded'
+else
+ echo 'WARNING: b43legacy firmware unavailable; exact chipset inspection required'
+ chroot "$W/root" apt-get -f install -y || true
+fi
+# The proprietary broadcom-sta (wl) DKMS module may conflict with b43 and
+# requires matching headers. Never install it blindly or blacklist b43.
+# Keep a Debian package in the live image as an offline fallback *source*.
+mkdir -p "$W/root/opt/pearmac/wifi-fallback" "$W/root/usr/local/bin"
+(chroot "$W/root" sh -c 'cd /opt/pearmac/wifi-fallback && apt-get download broadcom-sta-dkms' \
+ && echo 'Stored optional Broadcom wl DKMS package') \
+ || echo 'WARNING: optional broadcom-sta-dkms offline package unavailable'
+cat > "$W/root/usr/local/bin/pearmac-wifi-report" <<'WIFI'
+#!/bin/sh
+set +e
+echo '=== Wi-Fi PCI/USB ==='
+lspci -nnk | grep -A 7 -Ei 'network controller|wireless|broadcom|airport'
+lsusb
+echo '=== Interfaces ==='
+nmcli device status
+iw dev
+rfkill list
+echo '=== Modules ==='
+lsmod | grep -E '(^wl |^b43|^b43legacy|^ssb|^bcma|^brcmsmac|^brcmfmac)'
+echo '=== Firmware on disk ==='
+find /lib/firmware -maxdepth 3 \( -iname '*b43*' -o -iname '*brcm*' \) | head -80
+echo '=== Kernel messages ==='
+dmesg | grep -Ei 'b43|brcm|bcma|ssb|wl|firmware|wlan' | tail -90
+WIFI
+chmod +x "$W/root/usr/local/bin/pearmac-wifi-report"
+# Keep NetworkManager active on the live system.
+chroot "$W/root" systemctl enable NetworkManager.service || true
 cat > "$W/root/usr/local/bin/pearmac-hardware-report" <<'HWREPORT'
 #!/bin/bash
 set +e
