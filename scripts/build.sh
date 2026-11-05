@@ -25,7 +25,58 @@ cleanup() { set +e; umount -l "$W/root/sys"; umount -l "$W/root/proc"; umount -l
 trap cleanup EXIT
 export DEBIAN_FRONTEND=noninteractive
 chroot "$W/root" apt-get update
-chroot "$W/root" apt-get install -y --no-install-recommends live-boot live-config plank xserver-xorg-video-radeon xserver-xorg-video-fbdev firmware-amd-graphics mesa-utils pciutils
+# Native Linux hardware support: kernel handles audio, Ethernet, USB, SATA, FireWire, SMC.
+# Firmware packages cover the GPU and possible AirPort/Bluetooth revisions.
+chroot "$W/root" apt-get install -y --no-install-recommends \
+ live-boot live-config plank xserver-xorg-video-radeon xserver-xorg-video-fbdev \
+ firmware-amd-graphics firmware-brcm80211 firmware-realtek firmware-iwlwifi \
+ firmware-atheros firmware-misc-nonfree \
+ mesa-utils pciutils usbutils lshw ethtool iw wireless-tools \
+ alsa-utils pavucontrol bluez rfkill lm-sensors \
+ smartmontools hdparm evtest xinput v4l-utils
+# Broadcom b43 firmware is extracted separately from vendor packages.
+# Do not fail the whole ISO build if this optional downloader is unavailable.
+if chroot "$W/root" apt-get install -y --no-install-recommends firmware-b43-installer; then
+ echo 'b43 firmware installer succeeded'
+else
+ echo 'WARNING: optional b43 firmware installer unavailable; exact AirPort chipset needs checking'
+ chroot "$W/root" apt-get -f install -y || true
+fi
+mkdir -p "$W/root/usr/local/bin"
+cat > "$W/root/usr/local/bin/pearmac-hardware-report" <<'HWREPORT'
+#!/bin/bash
+set +e
+OUT="${1:-$HOME/pearmac-hardware-report.txt}"
+{
+ date -u
+ echo '=== SYSTEM ==='
+ uname -a
+ cat /proc/cmdline
+ echo '=== PCI ==='
+ lspci -nnk
+ echo '=== USB ==='
+ lsusb
+ echo '=== NETWORK ==='
+ ip link
+ rfkill list
+ echo '=== AUDIO ==='
+ aplay -l
+ echo '=== DISPLAY ==='
+ xrandr --verbose
+ glxinfo -B
+ echo '=== STORAGE ==='
+ lsblk -o NAME,TRAN,SIZE,MODEL,FSTYPE,MOUNTPOINTS
+ echo '=== MAC SMC / THERMAL ==='
+ lsmod | grep -E 'applesmc|radeon|b43|sky2|firewire|uvcvideo|snd|btusb'
+ sensors
+ echo '=== FIRMWARE / ERRORS ==='
+ dmesg | grep -Ei 'firmware|radeon|drm|b43|bluetooth|applesmc|error' | tail -150
+} > "$OUT" 2>&1
+echo "Saved report: $OUT"
+HWREPORT
+chmod +x "$W/root/usr/local/bin/pearmac-hardware-report"
+# Avoid copying a forced 'nomodeset' configuration into the operating system;
+# that remains an explicit boot-menu choice.
 mkdir -p "$W/root/etc/skel/.config/autostart"
 printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=PearMac Dock' 'Exec=plank' 'OnlyShowIn=XFCE;' > "$W/root/etc/skel/.config/autostart/pearmac-dock.desktop"
 chroot "$W/root" apt-get clean
