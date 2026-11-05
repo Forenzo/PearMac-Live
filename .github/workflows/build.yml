@@ -1,0 +1,26 @@
+name: Build PearMac live USB
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  remaster:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Disk capacity
+        run: df -h
+      - name: Build isolated live USB image
+        run: bash scripts/docker-build.sh
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PearMac-iMac51-USB-prototype
+          path: |
+            out/PearMac-iMac51-USB.img
+            out/SHA256SUMS
+            out/build-info.txt
+          if-no-files-found: warn
+          retention-days: 7
