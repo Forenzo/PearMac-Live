@@ -115,6 +115,25 @@ chmod +x "$W/root/usr/local/bin/pearmac-hardware-report"
 # that remains an explicit boot-menu choice.
 mkdir -p "$W/root/etc/skel/.config/autostart"
 printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=PearMac Dock' 'Exec=plank' 'OnlyShowIn=XFCE;' > "$W/root/etc/skel/.config/autostart/pearmac-dock.desktop"
+# This specific iMac5,1 AirPort BCM4321 [14e4:4328] *proved* b43 works after
+# firmware-b43-installer 1:019-8+deb12u1 was installed on the live system.
+# Firmware-brcm80211 alone is NOT enough. Never ship an ISO that silently
+# lacks b43/ucode11.fw: it would reproduce the first live boot failure.
+B43_FW="$W/root/lib/firmware/b43/ucode11.fw"
+if [[ ! -s "$B43_FW" && ! -s "$W/root/usr/lib/firmware/b43/ucode11.fw" ]]; then
+ echo 'ERROR: BCM4321 b43/ucode11.fw absent after firmware-b43-installer.' >&2
+ echo 'Do not publish this image as a working Wi-Fi PearMac build.' >&2
+ exit 1
+fi
+if ! chroot "$W/root" dpkg-query -W -f='\${db:Status-Abbrev}' firmware-b43-installer | grep -q '^ii'; then
+ echo 'ERROR: firmware-b43-installer not configured correctly.' >&2
+ exit 1
+fi
+mkdir -p /src/out
+chroot "$W/root" dpkg-query -W -f='\${binary:Package} \${Version} \${db:Status-Abbrev}\\n' \\
+ firmware-b43-installer b43-fwcutter network-manager network-manager-gnome \\
+ > /src/out/pearmac-wifi-packages.txt
+printf 'BCM4321 b43/ucode11.fw VERIFIED in live filesystem.\\n' > /src/out/pearmac-wifi-check.txt
 chroot "$W/root" apt-get clean
 rm -f "$W/root/usr/sbin/policy-rc.d"
 cleanup
