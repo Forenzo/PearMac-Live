@@ -22,5 +22,7 @@ jobs:
             out/PearMac-iMac51-USB.img
             out/SHA256SUMS
             out/build-info.txt
+            out/pearmac-wifi-packages.txt
+            out/pearmac-wifi-check.txt
           if-no-files-found: warn
           retention-days: 7
