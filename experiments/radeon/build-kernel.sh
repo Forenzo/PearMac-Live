@@ -54,6 +54,8 @@ if [[ "$MODE" == "packages" ]]; then
 fi
 (
  cd /src/out/radeon-kernel
- sha256sum radeon-firmware-fallback.patch kernel.config kernel-release.txt *.deb 2>/dev/null | grep -v '^$' > SHA256SUMS
+ for f in radeon-firmware-fallback.patch kernel.config kernel-release.txt *.deb; do
+   if [[ -f "$f" ]]; then sha256sum "$f"; fi
+ done > SHA256SUMS
 )
 echo "Radeon kernel $MODE completed: $KREL"
