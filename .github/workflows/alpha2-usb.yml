@@ -1,0 +1,89 @@
+name: Build PearMac Alpha 2 EFI32 Radeon USB
+
+on:
+  push:
+    branches:
+      - experiment/imac51-radeon-vbios
+    paths:
+      - 'experiments/radeon/stage-alpha2-kernel.sh'
+      - '.github/workflows/alpha2-usb.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  assemble:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    env:
+      PEARMAC_ALPHA2_RADEON: "1"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check assembly scripts and safety boot entry
+        run: |
+          bash -n scripts/build.sh
+          bash -n experiments/radeon/stage-alpha2-kernel.sh
+          grep -Fq "menuentry 'PearMac SAFE XFCE'" scripts/build.sh
+          grep -Fq 'nomodeset radeon.modeset=0' scripts/build.sh
+          grep -Fq 'vmlinuz-radeon' scripts/build.sh
+          df -h
+
+      - name: Download successfully compiled Radeon kernel
+        run: |
+          mkdir -p .work/radeon-kernel
+          gh run download 42186907988 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name PearMac-Radeon-X1600-kernel-packages \
+            --dir .work/radeon-kernel
+          ls -lh .work/radeon-kernel
+          test -s .work/radeon-kernel/kernel-release.txt
+          ls .work/radeon-kernel/linux-image-*pearmac-radeon*amd64.deb
+
+      - name: Fetch candidate Radeon VBIOS and verify exact SHA256
+        env:
+          VBIOS_B64: ${{ secrets.PEARMAC_RADEON_VBIOS_B64 }}
+        run: |
+          mkdir -p .work
+          if [ -n "$VBIOS_B64" ]; then
+            printf '%s' "$VBIOS_B64" | base64 -d > .work/radeon-x1600-vbios.bin
+          else
+            curl --fail --location --retry 3 --connect-timeout 20 \
+              --max-time 120 \
+              'https://keriganc.com/radeon-x1600-vbios.bin' \
+              --output .work/radeon-x1600-vbios.bin
+          fi
+          echo '3269f02c62c20cb06b95d83bdd8055951c9345755f8d8d5c95cc9e0bed42a63c  .work/radeon-x1600-vbios.bin' | sha256sum -c -
+          python3 experiments/radeon/verify_vbios.py .work/radeon-x1600-vbios.bin
+
+      - name: Build complete Alpha 2 EFI32 USB image
+        run: bash scripts/docker-build.sh
+
+      - name: Verify outputs
+        run: |
+          test -s out/PearMac-iMac51-USB.img
+          test -s out/radeon-build-info.txt
+          test -s out/pearmac-wifi-check.txt
+          grep -q 'VERIFIED' out/pearmac-wifi-check.txt
+          cat out/build-info.txt
+          cat out/pearmac-wifi-packages.txt
+          cat out/pearmac-wifi-check.txt
+          sha256sum -c out/SHA256SUMS
+
+      - name: Upload Alpha 2 image
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PearMac-iMac51-Alpha2-EFI32-Radeon-test
+          path: |
+            out/PearMac-iMac51-USB.img
+            out/SHA256SUMS
+            out/build-info.txt
+            out/radeon-build-info.txt
+            out/pearmac-wifi-packages.txt
+            out/pearmac-wifi-check.txt
+          if-no-files-found: error
+          retention-days: 7
