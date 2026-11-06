@@ -1,0 +1,64 @@
+name: Compile PearMac Radeon X1600 test kernel
+
+on:
+  push:
+    branches:
+      - experiment/imac51-radeon-vbios
+    paths:
+      - 'experiments/radeon/**'
+      - '.github/workflows/radeon-kernel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  experimental-radeon:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 180
+    steps:
+      - name: Check out dedicated experimental branch
+        uses: actions/checkout@v4
+
+      - name: Validate build scripts
+        run: |
+          bash -n scripts/build.sh
+          bash -n experiments/radeon/build-kernel.sh
+          bash -n experiments/radeon/check-inputs.sh
+          python3 -m py_compile experiments/radeon/apply_firmware_fallback.py experiments/radeon/verify_vbios.py
+
+      - name: Free scratch space for Linux kernel compilation
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          df -h
+
+      - name: Compile isolated Debian 12 Radeon kernel package
+        run: |
+          docker run --rm --platform linux/amd64 \
+            -v "$PWD:/src" -w /src debian:bookworm \
+            bash experiments/radeon/build-kernel.sh packages
+
+      - name: Verify compiled kernel package and preserved fallback
+        run: |
+          test -s out/radeon-kernel/kernel-release.txt
+          grep -q -- '-pearmac-radeon' out/radeon-kernel/kernel-release.txt
+          grep -q 'request_firmware' out/radeon-kernel/radeon-firmware-fallback.patch
+          ls out/radeon-kernel/linux-image-*pearmac-radeon*amd64.deb
+          grep -q "menuentry 'PearMac SAFE XFCE'" scripts/build.sh
+          grep -q 'nomodeset radeon.modeset=0' scripts/build.sh
+          cat out/radeon-kernel/kernel-release.txt
+          cat out/radeon-kernel/SHA256SUMS
+
+      - name: Upload experimental kernel (NOT yet a bootable USB)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PearMac-Radeon-X1600-kernel-packages
+          path: |
+            out/radeon-kernel/linux-image-*.deb
+            out/radeon-kernel/kernel-release.txt
+            out/radeon-kernel/kernel.config
+            out/radeon-kernel/radeon-firmware-fallback.patch
+            out/radeon-kernel/source-package.txt
+            out/radeon-kernel/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
