@@ -5,7 +5,8 @@ on:
     branches:
       - experiment/imac51-radeon-vbios
     paths:
-      - 'experiments/radeon/**'
+      - 'experiments/radeon/apply_firmware_fallback.py'
+      - 'experiments/radeon/build-kernel.sh'
       - '.github/workflows/radeon-kernel.yml'
   workflow_dispatch:
 
