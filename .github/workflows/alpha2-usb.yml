@@ -13,6 +13,11 @@ permissions:
   contents: read
   actions: read
 
+# Keep only the newest Alpha 2 assembly run active for this branch.
+concurrency:
+  group: pearmac-alpha2-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   assemble:
     runs-on: ubuntu-22.04
