@@ -190,5 +190,8 @@ test -s "$IMG" || { echo "ERROR: USB image not produced: $IMG" >&2; exit 1; }
 for f in filesystem.squashfs vmlinuz initrd.img; do
  mdir -i "$FAT" "::/live/$f" >/dev/null || { echo "ERROR: missing USB component $f" >&2; exit 1; }
 done
-sha256sum "$IMG" > /src/out/SHA256SUMS
-printf 'Unbooted prototype; Radeon acceleration not fixed.\n' > /src/out/build-info.txt
+(cd /src/out && sha256sum "$(basename "$IMG")" > SHA256SUMS)
+printf 'Unbooted prototype; Radeon acceleration not verified on hardware.\n' > /src/out/build-info.txt
+if [[ "${PEARMAC_ALPHA2_RADEON:-0}" == 1 ]]; then
+ cat /src/out/radeon-build-info.txt >> /src/out/build-info.txt
+fi
