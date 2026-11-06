@@ -130,6 +130,11 @@ fi
 mkdir -p /src/out
 chroot "$W/root" dpkg-query -W -f='${binary:Package} ${Version} ${db:Status-Abbrev}\n' firmware-b43-installer b43-fwcutter network-manager network-manager-gnome > /src/out/pearmac-wifi-packages.txt
 printf 'BCM4321 b43/ucode11.fw VERIFIED in live filesystem.\n' > /src/out/pearmac-wifi-check.txt
+# Alpha 2: stage a separately compiled Radeon kernel without replacing the
+# original live kernel or changing the SAFE menu entry.
+if [[ "${PEARMAC_ALPHA2_RADEON:-0}" == 1 ]]; then
+ IMG_ROOT="$W/root" W="$W" bash /src/experiments/radeon/stage-alpha2-kernel.sh
+fi
 chroot "$W/root" apt-get clean
 rm -f "$W/root/usr/sbin/policy-rc.d"
 cleanup
@@ -151,6 +156,14 @@ menuentry 'PearMac Radeon experimental' {
  initrd /live/initrd.img
 }
 GRUB
+if [[ "${PEARMAC_ALPHA2_RADEON:-0}" == 1 ]]; then
+cat >> "$W/grub.cfg" <<'RADEV'
+menuentry 'PearMac Radeon X1600 VBIOS TEST (experimental)' {
+ linux /live/vmlinuz-radeon boot=live components username=user hostname=pearmac radeon.modeset=1 radeon.pcie_gen2=0
+ initrd /live/initrd-radeon.img
+}
+RADEV
+fi
 grub-mkstandalone -O i386-efi -o "$W/BOOTIA32.EFI" --modules='part_gpt fat search search_fs_file linux normal configfile all_video efi_gop' "boot/grub/grub.cfg=$W/grub.cfg"
 IMG=/src/out/PearMac-iMac51-USB.img
 BYTES=$(du -cb "$W/live/"* "$W/BOOTIA32.EFI" | tail -1 | awk '{print $1}')
@@ -165,6 +178,13 @@ mformat -i "$FAT" -T "$SECTORS" -F -v PEARMAC ::
 mmd -i "$FAT" ::/EFI ::/EFI/BOOT ::/live
 mcopy -i "$FAT" "$W/BOOTIA32.EFI" ::/EFI/BOOT/BOOTIA32.EFI
 for f in filesystem.squashfs vmlinuz initrd.img; do mcopy -i "$FAT" "$W/live/$f" "::/live/$f"; done
+if [[ "${PEARMAC_ALPHA2_RADEON:-0}" == 1 ]]; then
+ for f in vmlinuz-radeon initrd-radeon.img; do
+   test -s "$W/live/$f"
+   mcopy -i "$FAT" "$W/live/$f" "::/live/$f"
+   mdir -i "$FAT" "::/live/$f" > /dev/null
+ done
+fi
 for f in /EFI/BOOT/BOOTIA32.EFI /live/filesystem.squashfs /live/vmlinuz /live/initrd.img; do mdir -i "$FAT" "::$f" >/dev/null; done
 sha256sum "$IMG" > /src/out/SHA256SUMS
 printf 'Unbooted prototype; Radeon acceleration not fixed.\n' > /src/out/build-info.txt
