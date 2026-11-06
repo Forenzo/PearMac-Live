@@ -1,0 +1,18 @@
+#!/bin/sh
+# PearMac Radeon early-boot firmware staging hook.
+# Install as /etc/initramfs-tools/hooks/pearmac-radeon-vbios in the
+# experimental kernel's rootfs, then run update-initramfs -u -k VERSION.
+set -e
+case "${1:-}" in
+  prereqs) exit 0 ;;
+esac
+. /usr/share/initramfs-tools/hook-functions
+ROM=/lib/firmware/radeon/vbios.bin
+[ -r "$ROM" ] || ROM=/usr/lib/firmware/radeon/vbios.bin
+if [ ! -r "$ROM" ]; then
+  echo "pearmac-radeon-vbios: firmware file unavailable, refusing to build test initramfs" >&2
+  exit 1
+fi
+mkdir -p "${DESTDIR}/lib/firmware/radeon"
+cp "$ROM" "${DESTDIR}/lib/firmware/radeon/vbios.bin"
+chmod 0644 "${DESTDIR}/lib/firmware/radeon/vbios.bin"
