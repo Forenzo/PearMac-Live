@@ -6,6 +6,8 @@ on:
       - experiment/imac51-radeon-vbios
     paths:
       - 'experiments/radeon/stage-alpha2-kernel.sh'
+      - 'scripts/build.sh'
+      - 'scripts/docker-build.sh'
       - '.github/workflows/alpha2-usb.yml'
   workflow_dispatch:
 
@@ -31,6 +33,7 @@ jobs:
       - name: Check assembly scripts and safety boot entry
         run: |
           bash -n scripts/build.sh
+          bash -n scripts/docker-build.sh
           bash -n experiments/radeon/stage-alpha2-kernel.sh
           grep -Fq "menuentry 'PearMac SAFE XFCE'" scripts/build.sh
           grep -Fq 'nomodeset radeon.modeset=0' scripts/build.sh
@@ -68,6 +71,8 @@ jobs:
 
       - name: Verify outputs
         run: |
+          echo 'Output files:'
+          ls -lah out
           test -s out/PearMac-iMac51-USB.img
           test -s out/radeon-build-info.txt
           test -s out/pearmac-wifi-check.txt
