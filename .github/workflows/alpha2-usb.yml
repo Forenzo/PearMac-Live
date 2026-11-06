@@ -38,6 +38,11 @@ jobs:
           grep -Fq "menuentry 'PearMac SAFE XFCE'" scripts/build.sh
           grep -Fq 'nomodeset radeon.modeset=0' scripts/build.sh
           grep -Fq 'vmlinuz-radeon' scripts/build.sh
+          # Regression check: verify a Docker-style checksum from the host cwd.
+          mkdir -p .work/checksum-regression
+          printf 'checksum path check\\n' > .work/checksum-regression/test.img
+          (cd .work/checksum-regression && sha256sum test.img > SHA256SUMS)
+          (cd .work/checksum-regression && sha256sum -c SHA256SUMS)
           df -h
 
       - name: Download successfully compiled Radeon kernel
@@ -80,7 +85,9 @@ jobs:
           cat out/build-info.txt
           cat out/pearmac-wifi-packages.txt
           cat out/pearmac-wifi-check.txt
-          sha256sum -c out/SHA256SUMS
+          # SHA256SUMS contains a filename relative to out/, not the repo root.
+          (cd out && sha256sum -c SHA256SUMS)
+          echo 'Alpha 2 image checksum verified.'
 
       - name: Upload Alpha 2 image
         if: success()
