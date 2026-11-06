@@ -43,19 +43,18 @@ jobs:
           test -s .work/radeon-kernel/kernel-release.txt
           ls .work/radeon-kernel/linux-image-*pearmac-radeon*amd64.deb
 
-      - name: Fetch candidate Radeon VBIOS and verify exact SHA256
+      - name: Restore privately supplied compressed Radeon VBIOS
         env:
-          VBIOS_B64: ${{ secrets.PEARMAC_RADEON_VBIOS_B64 }}
+          VBIOS_XZ_B64: ${{ secrets.PEARMAC_RADEON_VBIOS_XZ_B64 }}
         run: |
+          set -euo pipefail
           mkdir -p .work
-          if [ -n "$VBIOS_B64" ]; then
-            printf '%s' "$VBIOS_B64" | base64 -d > .work/radeon-x1600-vbios.bin
-          else
-            curl --fail --location --retry 3 --connect-timeout 20 \
-              --max-time 120 \
-              'https://keriganc.com/radeon-x1600-vbios.bin' \
-              --output .work/radeon-x1600-vbios.bin
+          if [ -z "$VBIOS_XZ_B64" ]; then
+            echo 'ERROR: Set GitHub Actions repository secret PEARMAC_RADEON_VBIOS_XZ_B64.' >&2
+            echo 'Encode: xz -9 -c radeon-x1600-vbios.bin | base64 | tr -d "\\n"' >&2
+            exit 1
           fi
+          printf '%s' "$VBIOS_XZ_B64" | base64 -d | xz -d > .work/radeon-x1600-vbios.bin
           echo '3269f02c62c20cb06b95d83bdd8055951c9345755f8d8d5c95cc9e0bed42a63c  .work/radeon-x1600-vbios.bin' | sha256sum -c -
           python3 experiments/radeon/verify_vbios.py .work/radeon-x1600-vbios.bin
 
