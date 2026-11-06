@@ -14,12 +14,18 @@ EXPECTED_SHA256=3269f02c62c20cb06b95d83bdd8055951c9345755f8d8d5c95cc9e0bed42a63c
 }
 python3 "$ROOT/experiments/radeon/verify_vbios.py" "$ROM"
 shopt -s nullglob
-DEBS=("$ARTIFACT_DIR"/linux-image-*pearmac-radeon*amd64.deb)
-[[ "${#DEBS[@]}" == 1 ]] || { echo "ERROR: expected exactly one experimental kernel image .deb, got ${#DEBS[@]}" >&2; exit 1; }
-PKG="${DEBS[0]}"
 KREL="$(cat "$ARTIFACT_DIR/kernel-release.txt")"
+# The artifact also contains a huge linux-image-*-dbg package. Select the
+# exact runtime image by its kernel release, never an ambiguous glob.
+DEBS=("$ARTIFACT_DIR"/"linux-image-${KREL}"_*.deb)
+[[ "${#DEBS[@]}" == 1 ]] || {
+  printf 'ERROR: expected one runtime kernel image, found %s; candidates:\\n' "${#DEBS[@]}" >&2
+  printf '%s\\n' "$ARTIFACT_DIR"/linux-image-*.deb >&2
+  exit 1
+}
+PKG="${DEBS[0]}"
 [[ "$KREL" == *pearmac-radeon* && "$KREL" != *"/"* ]] || { echo "ERROR: unsafe kernel release" >&2; exit 1; }
-[[ "$(dpkg-deb -f "$PKG" Package)" == linux-image-*pearmac-radeon* ]] || { echo "ERROR: unexpected package name" >&2; exit 1; }
+[[ "$(dpkg-deb -f "$PKG" Package)" == "linux-image-$KREL" ]] || { echo "ERROR: unexpected runtime kernel package name" >&2; exit 1; }
 [[ -s "$ARTIFACT_DIR/SHA256SUMS" ]] && (cd "$ARTIFACT_DIR" && sha256sum --check SHA256SUMS)
 mkdir -p "$IMG_ROOT/lib/firmware/radeon" "$IMG_ROOT/etc/initramfs-tools/hooks" "$IMG_ROOT/tmp"
 install -m 0644 "$ROM" "$IMG_ROOT/lib/firmware/radeon/vbios.bin"
