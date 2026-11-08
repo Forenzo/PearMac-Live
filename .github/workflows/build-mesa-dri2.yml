@@ -103,14 +103,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash scripts/package-mesa-dri2.sh \\
+          bash scripts/package-mesa-dri2.sh \
             /tmp/mesa-output/pearmac-mesa-dri2 /tmp/mesa-deb
 
       - name: Validate package install, loader selection and rollback in Debian 13
         shell: bash
         run: |
           set -euo pipefail
-          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \\
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
             libglx-mesa0 mesa-libgallium libgl1-mesa-dri
           baseline="$(ldconfig -p | grep 'libGLX_mesa.so.0 ' || true)"
           echo "Default library: $baseline"
