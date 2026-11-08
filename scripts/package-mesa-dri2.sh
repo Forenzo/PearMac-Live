@@ -26,7 +26,7 @@ install -m 0644 "$libs/libGLX_mesa.so.0.0.0" "$root/opt/pearmac-radeon/lib/"
 ln -s libGLX_mesa.so.0.0.0 "$root/opt/pearmac-radeon/lib/libGLX_mesa.so.0"
 install -m 0644 "$libs/libgallium-25.0.7.so" "$root/opt/pearmac-radeon/private/"
 
-patchelf --set-rpath '\$ORIGIN/../private' \
+patchelf --set-rpath '$ORIGIN/../private' \
   "$root/opt/pearmac-radeon/lib/libGLX_mesa.so.0.0.0"
 
 # The earlier-sorted conf fragment should give PearMac's libGLX_mesa.so.0
@@ -110,6 +110,6 @@ dpkg-deb --contents "$out/${pkg}_${debver}_amd64.deb"
 
 # Prove that our GLX bundle has the expected private-gallium runtime path.
 readelf -d "$root/opt/pearmac-radeon/lib/libGLX_mesa.so.0.0.0" \
-  | grep -F '\$ORIGIN/../private'
+  | grep -F '$ORIGIN/../private'
 
 printf 'Built %s\n' "$out/${pkg}_${debver}_amd64.deb"
