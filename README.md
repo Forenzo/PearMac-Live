@@ -21,6 +21,14 @@ LD_LIBRARY_PATH="$MESA_LIB" LIBGL_DRI3_DISABLE=1 glxinfo -B
 
 Observed `OpenGL renderer string: ATI RV530`, `Accelerated: yes`, `OpenGL version string: 2.1 Mesa 25.0.7`. Do **not** overwrite system Mesa files just to reproduce this test.
 
+## Experimental system-wide GLX integration (new)
+
+A reversible Debian package build has been added to the same Mesa GitHub Actions workflow: `PearMac-Radeon-Systemwide-DEB-EXPERIMENTAL`. It places a legacy DRI2-capable Mesa GLX vendor library in a separate `/opt` directory, with its matching Gallium library private; it does **not** overwrite Debian's system Mesa files. Installation changes GLX library resolution globally, so proceed only after the new CI build passes and keep a text-console/live-DVD recovery option.
+
+**[System-wide Debian package: installation, testing and rollback](docs/Radeon-GLX-systemwide-deb.md)**
+
+**Status:** the package build and real iMac testing are **pending**; the earlier per-app test remains the last confirmed Radeon GLX success.
+
 ## Earlier Debian 12 PearMac experiments (historical)
 
 The previous Debian 12.0.0 XFCE live USB image/kernel `6.1.190-pearmac-radeon` needed `nomodeset`/safe graphics to reach the desktop. Wi-Fi was eventually fixed, but normal Radeon modesetting failed to display. Those experiments remain in the repository for historical reference and may still be useful, but they **are not the recommended or proven Radeon-accelerated solution**.
