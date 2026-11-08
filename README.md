@@ -29,6 +29,15 @@ A reversible Debian package build has been added to the same Mesa GitHub Actions
 
 **Verified 8 November 2026:** build #4 passed CI installation and rollback checks, and the package was installed on the actual iMac running Q4OS. An unwrapped `env -u LD_LIBRARY_PATH glxinfo -B` reports `ATI RV530` and `Accelerated: yes`. After-reboot behavior, Chromium GPU acceleration, and the macOS Lion boot path are not yet verified.
 
+## PearMac classic experience on Q4OS 6
+
+The previous PearMac feature plan is being restored **on top of the installed, hardware-accelerated Q4OS system**: original Apple Remote/PearRemote, RetroArch and gamepad support, classic iPod music management/PearPod, FireWire 400 storage and DV, Apple hardware utilities and Front Row-style media UI.
+
+- [Feature restoration guide and status](docs/Q4OS6-classic-PearMac-features.md)
+- [Debian 13 userspace prerequisites and hardware-audit script](scripts/install-legacy-features.sh)
+
+On a checked-out repository, run `bash scripts/install-legacy-features.sh audit` to identify the actual devices, or `bash scripts/install-legacy-features.sh core` to install the available Debian 13 prerequisite packages. **Hardware-specific remapping/sync functions remain pending until verified; the installer never reformats media or changes the Radeon/boot configuration.**
+
 ## Earlier Debian 12 PearMac experiments (historical)
 
 The previous Debian 12.0.0 XFCE live USB image/kernel `6.1.190-pearmac-radeon` needed `nomodeset`/safe graphics to reach the desktop. Wi-Fi was eventually fixed, but normal Radeon modesetting failed to display. Those experiments remain in the repository for historical reference and may still be useful, but they **are not the recommended or proven Radeon-accelerated solution**.
