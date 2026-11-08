@@ -114,3 +114,21 @@ OpenGL ES profile version string: OpenGL ES 2.0 Mesa 25.0.7
 This confirms **system-wide GLX library selection and R300 acceleration on installed Q4OS**, not just the earlier live-DVD test. Still to verify: after-reboot persistence, whether macOS Lion boots normally, Chromium GPU acceleration (ANGLE/GLES3 errors were observed earlier), and effects of future Mesa updates. Keep package rollback commands available.
 
 Successful CI run: https://github.com/Forenzo/PearMac-Live/actions/runs/42521826824
+
+## Post-reboot persistence verification (8 November 2026)
+
+The user restarted the installed Q4OS system and ran the unwrapped command:
+
+```bash
+glxinfo -B | grep -E 'Device:|Accelerated:|OpenGL renderer'
+```
+
+Observed output:
+
+```text
+    Device: ATI RV530 (0x71c5)
+    Accelerated: yes
+OpenGL renderer string: ATI RV530
+```
+
+**Confirmed:** the system-wide `pearmac-mesa-r300-dri2` GLX override persists across reboot and selects hardware-accelerated R300 rendering automatically on the installed iMac5,1. This does not establish Chromium GPU acceleration or verify booting the remaining macOS Lion installation.
