@@ -1,7 +1,7 @@
 # PearMac iMac5,1: working Q4OS 6 / Radeon X1600 field guide
 
 **Test date:** 8 November 2026  
-**Status:** LIVE DVD + Radeon 2D + per-process hardware OpenGL **verified on actual hardware**. Permanent internal-disk installation **NOT YET VERIFIED** at the time this guide was written.  
+**Status:** LIVE DVD + Radeon 2D + per-process hardware OpenGL **verified on actual hardware**. Internal-disk installation was later **reported complete by the user**; post-install bootloader state, Lion preservation, and system-wide Radeon acceleration still require separate verification.  
 **Test machine:** White Intel iMac5,1 (late 2006), Core 2 Duo (64-bit processor, 32-bit Apple EFI), ATI Mobility Radeon X1600 / RV530 / M56-P (PCI 1002:71c5, Apple subsystem 106b:0080), 128 MiB VRAM.
 
 > This is the new recommended **working reference configuration** for this hardware. The older Debian 12 PearMac XFCE USB/kernel 6.1 remaster remains in Git history as an experiment, not the proven route. Do not assume a successful live DVD automatically implies an installed BIOS-mode GRUB boot.
@@ -170,7 +170,7 @@ It **opened and was usable**, but logged `ANGLE Display::initialize error 12289`
 
 ## 9. Internal disk installation: planned, NOT verified
 
-**This section documents preparation only. At time of writing, the installer was at the Users/Summary stage; no completed installation and successful disk boot were reported.**
+**Update (8 November 2026):** the user subsequently reported that Q4OS was fully installed and operating. The original partitioning details below document the planned layout; post-install GPT/hybrid-MBR details and successful macOS Lion boot remain unverified.
 
 Disk: ST3250824AS Q, 250 GB decimal / 232.9 GiB, GPT **with hybrid MBR**. Q4OS live DVD booted **legacy BIOS**.
 
@@ -233,3 +233,7 @@ test -d /sys/firmware/efi && echo EFI || echo BIOS
 - PearMac build workflow: https://github.com/Forenzo/PearMac-Live/blob/main/.github/workflows/build-mesa-dri2.yml
 
 *Evidence level: live boot, EXA, b43 and corrected GLX success directly observed in session logs. Internal installation and permanent boot remain pending.*
+
+## 11. Post-install update and system-wide GLX packaging (8 November 2026)
+
+The user reported Q4OS fully installed and operating on the iMac and asked for permanent graphics integration. A reversible, isolated system-wide Debian package builder has been added to [the existing Mesa workflow](../.github/workflows/build-mesa-dri2.yml), with installation and rollback instructions in [Radeon-GLX-systemwide-deb.md](Radeon-GLX-systemwide-deb.md). **The new package is not yet verified by CI or on the installed iMac.**
