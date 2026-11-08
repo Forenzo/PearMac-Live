@@ -9,12 +9,10 @@ if [[ ${EUID} -eq 0 ]]; then
   exit 1
 fi
 
-if [[ -r /etc/os-release ]]; then
-  . /etc/os-release
-  if [[ "${VERSION_CODENAME:-}" != "trixie" ]]; then
-    echo "WARNING: tested recipe targets Debian 13 / trixie. Found ${PRETTY_NAME:-unknown}." >&2
-    exit 1
-  fi
+# Q4OS may expose its own release codename; check the Debian base instead.
+if [[ ! -r /etc/debian_version ]] || [[ "$(cat /etc/debian_version)" != 13* ]]; then
+  echo "This installer targets Debian 13 / Q4OS 6. Detected Debian base: $(cat /etc/debian_version 2>/dev/null || echo unknown)" >&2
+  exit 1
 fi
 
 usage() {
