@@ -118,7 +118,7 @@ jobs:
           ldconfig -p | grep 'libGLX_mesa.so.0 '
           ldconfig -p | grep 'libGLX_mesa.so.0 ' | grep -F /opt/pearmac-radeon/lib/
           ldd /opt/pearmac-radeon/lib/libGLX_mesa.so.0 | tee /tmp/pearmac-ldd.txt
-          grep -F /opt/pearmac-radeon/private/libgallium-25.0.7.so /tmp/pearmac-ldd.txt
+          grep -E 'libgallium-25[.]0[.]7[.]so => /opt/pearmac-radeon/(lib/[.][.]/)?private/libgallium-25[.]0[.]7[.]so' /tmp/pearmac-ldd.txt
           dpkg -r pearmac-mesa-r300-dri2
           if ldconfig -p | grep 'libGLX_mesa.so.0 ' | grep -F /opt/pearmac-radeon/lib/; then
             echo "ERROR: package removal failed to restore original loader"
