@@ -1,0 +1,105 @@
+name: Build Mesa 25 R300 legacy DRI2 (experimental)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mesa-dri2:
+    name: Debian 13 amd64 Mesa DRI2 compatibility build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    container:
+      image: debian:trixie
+
+    steps:
+      - name: Enable Debian source repositories and install build tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /etc/apt/sources.list.d/mesa-source.sources <<'EOF'
+          Types: deb-src
+          URIs: http://deb.debian.org/debian
+          Suites: trixie trixie-updates
+          Components: main
+          Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+          EOF
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            build-essential ca-certificates devscripts dpkg-dev \
+            meson ninja-build pkg-config python3 python3-mako python3-yaml \
+            git tar xz-utils binutils
+          DEBIAN_FRONTEND=noninteractive apt-get build-dep -y mesa
+
+      - name: Fetch Debian 13 Mesa source with Debian patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/mesa-work
+          cd /tmp/mesa-work
+          apt-get source mesa=25.0.7-2+deb13u1
+          src_dir="$(find . -maxdepth 1 -type d -name 'mesa-*' | head -n 1)"
+          test -n "$src_dir"
+          echo "MESA_SOURCE=$PWD/${src_dir#./}" >> "$GITHUB_ENV"
+
+      - name: Configure reduced R300 + software fallback Mesa build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$MESA_SOURCE"
+          meson setup build-legacy \
+            --prefix=/opt/pearmac-mesa-dri2 \
+            --libdir=lib/x86_64-linux-gnu \
+            --buildtype=release \
+            -Dlegacy-x11=dri2 \
+            -Dglx=dri \
+            -Dglx-direct=true \
+            -Dglvnd=true \
+            -Dgallium-drivers=r300,softpipe,llvmpipe \
+            -Dvulkan-drivers= \
+            -Dllvm=enabled \
+            -Degl=disabled \
+            -Dgbm=disabled \
+            -Dgallium-va=disabled \
+            -Dgallium-vdpau=disabled \
+            -Dgallium-opencl=disabled
+          meson configure build-legacy | tee /tmp/mesa-configure.txt
+          grep -Eq 'legacy-x11.*dri2' /tmp/mesa-configure.txt || {
+            echo 'ERROR: DRI2 legacy option not present in resolved Meson configuration'
+            exit 1
+          }
+
+      - name: Compile and stage only (never install on runner system)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$MESA_SOURCE"
+          meson compile -C build-legacy -j 4
+          DESTDIR=/tmp/mesa-stage meson install -C build-legacy
+          test -d /tmp/mesa-stage/opt/pearmac-mesa-dri2/lib/x86_64-linux-gnu
+          mkdir -p /tmp/mesa-output
+          cp /tmp/mesa-configure.txt /tmp/mesa-output/meson-configure.txt
+          cp -a /tmp/mesa-stage/opt/pearmac-mesa-dri2 /tmp/mesa-output/
+          find /tmp/mesa-output/pearmac-mesa-dri2 -type f -name '*.so*' -exec file {} \; > /tmp/mesa-output/libraries.txt || true
+          cat > /tmp/mesa-output/README.txt <<'EOF'
+          EXPERIMENTAL PearMac Radeon X1600 Mesa 25.0.7 DRI2 libraries
+          Built in a Debian 13 (trixie) amd64 container, with -Dlegacy-x11=dri2.
+          THIS ARCHIVE IS NOT A BOOTABLE ISO OR AN INSTALLER.
+
+          Do not overwrite /usr/lib or system Mesa on the working iMac.
+          No hardware access exists on the CI runner: successful compilation does
+          NOT prove GPU acceleration, ABI compatibility, or operational stability.
+          Test these libraries in a separate directory with a controlled per-process
+          environment before any system integration.
+          The preexisting Xorg radeon kernel/EXA configuration remains untouched.
+          EOF
+
+      - name: Upload experimental Mesa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PearMac-Mesa25-R300-Legacy-DRI2-TEST
+          path: /tmp/mesa-output/
+          if-no-files-found: error
+          retention-days: 14
