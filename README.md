@@ -27,7 +27,7 @@ A reversible Debian package build has been added to the same Mesa GitHub Actions
 
 **[System-wide Debian package: installation, testing and rollback](docs/Radeon-GLX-systemwide-deb.md)**
 
-**Status:** the package build and real iMac testing are **pending**; the earlier per-app test remains the last confirmed Radeon GLX success.
+**Verified 8 November 2026:** build #4 passed CI installation and rollback checks, and the package was installed on the actual iMac running Q4OS. An unwrapped `env -u LD_LIBRARY_PATH glxinfo -B` reports `ATI RV530` and `Accelerated: yes`. After-reboot behavior, Chromium GPU acceleration, and the macOS Lion boot path are not yet verified.
 
 ## Earlier Debian 12 PearMac experiments (historical)
 
