@@ -1,29 +1,30 @@
-# PearMac Live
+# PearMac Live — iMac5,1 Radeon X1600 Linux project
 
-Private experimental Debian 12 XFCE live-USB image for the 2006 Intel iMac5,1 (64-bit Core 2 Duo, 32-bit Apple EFI, ATI Radeon X1600).
+**Current recommended reference: Q4OS 6 Andromeda (Debian 13 / Trinity) live DVD, BIOS boot + Mesa 25 R300 legacy DRI2 GLX fix.**
 
-## Status
-**Prototype only.** The EFI32-to-amd64 boot path, live image builder, and graphics modes have not yet been tested on the actual iMac. This is not a finished distribution.
+The white Intel iMac5,1 (late 2006, 32-bit Apple EFI / 64-bit Core 2 Duo, ATI Mobility Radeon X1600 RV530) now has a **verified working Q4OS 6 live DVD**, native-display Radeon modesetting, accelerated Xorg EXA, functional Broadcom b43 Wi-Fi and **hardware OpenGL 2.1**, tested through a custom Mesa 25.0.7 userspace GLX library.
 
-## Build on GitHub
-1. Open **Actions**.
-2. Choose **Build PearMac live USB**.
-3. Choose **Run workflow**.
-4. Check the job log and, if successful, download the **PearMac-iMac51-USB-prototype** artifact.
+**START HERE:** [Full reproduction and troubleshooting guide](docs/Q4OS6-iMac51-Radeon-X1600-working-guide.md).
 
-The script downloads the exact Debian 12.0 XFCE ISO from the official Debian archive and verifies its SHA256 checksum before modifying the filesystem. It then repackages the live environment in a GPT/FAT32 USB disk image containing an EFI32 GRUB loader.
+**Important limits:** The Mesa fix was verified with `LD_LIBRARY_PATH` on `glxinfo -B`, **not** installed system-wide. Chromium launched but logged ANGLE/GLES3 GPU initialization failures; browser GPU acceleration is unverified. The permanent internal-disk installation was **not yet complete or confirmed** at documentation time; preserve Lion and take backups before touching the hybrid GPT/MBR.
 
-This first build has two boot choices: a conservative XFCE session (nomodeset) and an experimental Radeon modesetting session. It adds Plank but **does not yet have the complete PearOS/MacTahoe appearance or UKUI**. Those are planned once we have reliable live USB boot and diagnostics.
+## Reproduce the verified Mesa acceleration
 
-The source is a build recipe, not a prebuilt ISO. No Windows ATI binaries are injected; they are not Linux drivers. Building does not change the Mac's internal disk.
+The separate, manually triggered [Build Mesa 25 R300 legacy DRI2 workflow](.github/workflows/build-mesa-dri2.yml) uses a Debian 13 container and builds Mesa 25.0.7 with `-Dlegacy-x11=dri2`. Successful [run #2](https://github.com/Forenzo/PearMac-Live/actions/runs/42478406578) produced `PearMac-Mesa25-R300-Legacy-DRI2-TEST`. Artifacts expire; rerun the workflow.
 
-**USB caution:** writing the output image with a flashing tool will erase the **selected USB drive**. Verify the drive carefully before writing. Keep Lion and Windows 7 intact.
+On a Q4OS 6 live system, unpack the artifact to `~/mesa-test` and run:
 
-Source ISO: https://cdimage.debian.org/cdimage/archive/12.0.0-live/amd64/iso-hybrid/debian-live-12.0.0-amd64-xfce.iso
+```bash
+MESA_LIB="$HOME/mesa-test/pearmac-mesa-dri2/lib/x86_64-linux-gnu"
+LD_LIBRARY_PATH="$MESA_LIB" LIBGL_DRI3_DISABLE=1 glxinfo -B
+```
 
-## AirPort Wi-Fi support (next build)
-The first successful build predates these changes. The next build includes NetworkManager, WPA supplicant, Debian's Broadcom firmware packages, b43/b43legacy firmware installers, and a staged `broadcom-sta-dkms` package as an **inactive** fallback. The optional `wl` module is NOT loaded by default or compiled: it needs compatible kernel headers, and enabling it too soon can blacklist/conflict with `b43`. Firmware downloads performed by b43 installers must succeed during the build for that firmware to be present offline.
+Observed `OpenGL renderer string: ATI RV530`, `Accelerated: yes`, `OpenGL version string: 2.1 Mesa 25.0.7`. Do **not** overwrite system Mesa files just to reproduce this test.
 
-Run `sudo pearmac-wifi-report` once the new live image boots to identify AirPort's actual chip/driver and firmware loading. In the earlier Gentoo attempt, `wl` loaded but Wi-Fi operation was never demonstrated. Do not assume AirPort works until scanning and association succeed.
+## Earlier Debian 12 PearMac experiments (historical)
 
-Wi-Fi references: https://wiki.debian.org/bcm43xx and https://wiki.debian.org/wl
+The previous Debian 12.0.0 XFCE live USB image/kernel `6.1.190-pearmac-radeon` needed `nomodeset`/safe graphics to reach the desktop. Wi-Fi was eventually fixed, but normal Radeon modesetting failed to display. Those experiments remain in the repository for historical reference and may still be useful, but they **are not the recommended or proven Radeon-accelerated solution**.
+
+The original [Build PearMac live USB](.github/workflows/build.yml), Wi-Fi rescue and older ISO workflows have been **left unchanged** to preserve reproducibility; new development should start from the working Debian 13/Q4OS findings.
+
+See the **full field guide** for hardware IDs, optical boot specifics, GPU diagnostics, exact Mesa flags, GitHub Actions failure/fix, Chromium caveat, and the pending Lion-preserving installation layout.
