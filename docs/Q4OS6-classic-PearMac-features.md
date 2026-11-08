@@ -13,7 +13,7 @@ The old Debian 12 PearMac image used to be the vehicle for a much broader Mac-ex
 | iPod | iPod classic/mini/nano USB mass-storage music management, backups, safe eject; FireWire models when supported | Strawberry + `libgpod4t64`; `lsblk`, file manager, `udisksctl`. Do not overwrite iPod databases or format without backups. | **Installer committed**; actual model not tested |
 | iPod Touch / older iOS | Detect and browse supported AFC services, with varying compatibility depending on iOS model/version | `usbmuxd`, `libimobiledevice-utils`, `ifuse` | **Installer committed**; model-dependent, not iTunes-equivalent sync |
 | FireWire 400 | FireWire storage, Zip 250, DV capture, and compatible iPod storage | In-kernel `firewire_ohci`, `firewire_core`, `firewire_sbp2` where available. `dvgrab` and `libraw1394-tools` where packaged. | **Installer committed**; check actual card/device |
-| Built-in Apple hardware | iSight, eject, Apple SMC/fan monitoring, sound/Bluetooth, brightness | `v4l-utils`, `eject`, `lm-sensors` and hardware-specific probing; avoid unsafe fan PWM overrides and invasive boot-parameter changes | **Diagnostics available**, not all devices verified |
+| Bluetooth | Apple Bluetooth module, keyboard/mouse/headset pairing, tray menu and radio controls | BlueZ + Blueman + rfkill; match audio plugin to existing PulseAudio or PipeWire backend without switching audio server | **Installer added**, pairing unverified |\n| Built-in Apple hardware | iSight, eject, Apple SMC/fan monitoring, sound/Bluetooth, brightness | `v4l-utils`, `eject`, `lm-sensors` and hardware-specific probing; avoid unsafe fan PWM overrides and invasive boot-parameter changes | **Diagnostics available**, not all devices verified |
 | Front Row / PearTunes | Sofa-style launcher for music, video, DVDs and browser; Apple Remote modes | Small Trinity/X11 UI/script later, after the actual remote's event codes are known; Strawberry for music, media player and browser for video | **Not yet implemented** |
 
 ## Install the userspace prerequisites
@@ -89,3 +89,17 @@ Never `modprobe` randomly or change graphics kernel options during this feature 
 6. Integrate launcher/menu and dock after functionality is verified.
 
 This is a **restoration roadmap plus a real userspace installer**, not a claim that all peripherals have been tested on the installed iMac.
+
+## Bluetooth restoration (8 November 2026)
+
+PearMac's Q4OS feature script now includes `bluetooth` as a standalone installer option **and** adds Bluetooth to `core`. It installs the BlueZ daemon, graphical Blueman manager/tray, radio status utilities and OBEX support from Debian repositories, enables the Bluetooth service, and chooses **only the compatible audio plugin** for the already installed sound server. It deliberately avoids swapping PulseAudio and PipeWire.
+
+```bash
+bash scripts/install-legacy-features.sh bluetooth
+blueman-manager
+rfkill list bluetooth
+bluetoothctl list
+systemctl status bluetooth --no-pager
+```
+
+If the original iMac's Bluetooth module does not appear, examine `lsusb`, `rfkill list`, and `journalctl -u bluetooth -b` before buying hardware or making driver changes. The tray applet can be launched with `blueman-applet` and can be made to autostart after confirming it works in Trinity. Bluetooth headphone playback additionally depends on the active audio server; the script does not forcibly migrate between servers.
