@@ -1,6 +1,6 @@
 # System-wide Radeon X1600 DRI2 GLX integration for Q4OS 6
 
-**Status:** packaging workflow committed; system-wide .deb has **not yet been successfully built/tested by GitHub Actions or on the iMac**. The earlier per-app override did work on Q4OS 6 live DVD, reporting **ATI RV530 / Accelerated: yes**. Do not conflate these milestones.
+**Status (8 November 2026): VERIFIED on installed Q4OS 6 on the real iMac5,1.** GitHub Actions build #4 succeeded, including package installation/library selection/removal in CI. The user installed the .deb on the iMac and confirmed hardware GLX without LD_LIBRARY_PATH. Persistence after reboot and performance across applications remain to be verified.
 
 This extension of the [verified field guide](Q4OS6-iMac51-Radeon-X1600-working-guide.md) lets all **GLX** programs resolve the custom DRI2-compatible Mesa vendor library automatically. It does **not** upgrade the GPU, provide hardware WebGL2/GLES3/Vulkan, or guarantee Chromium's GPU process works.
 
@@ -90,3 +90,27 @@ Do not apply this AMD/R300-specific package to other computers or Mesa versions,
 - **Pending**: new system-wide package build + CI install/remove verification.
 - **Pending**: actual Q4OS installed-machine GLX test **without** environment override and verification after reboot.
 - **Not verified**: Chromium ANGLE GPU compositing, WebGL2, Video Decode, modern OpenGL.
+
+## Confirmed installed-hardware success (8 November 2026)
+
+- Host: Q4OS 6 on the white iMac5,1; login shown as `mitsu@MITSUKAWA`.
+- Package: `pearmac-mesa-r300-dri2_25.0.7-2+deb13u1.pearmac1_amd64.deb`.
+- Installed through `sudo apt install ./pearmac-mesa-r300-dri2_*.deb`; APT completed unpacking and setup successfully.
+- The **unwrapped**, global-library test `env -u LD_LIBRARY_PATH glxinfo -B` produced:
+
+```text
+direct rendering: Yes
+Vendor: Mesa (0x1002)
+Device: ATI RV530 (0x71c5)
+Version: 25.0.7
+Accelerated: yes
+Video memory: 128MB
+OpenGL renderer string: ATI RV530
+OpenGL version string: 2.1 Mesa 25.0.7
+OpenGL shading language version string: 1.20
+OpenGL ES profile version string: OpenGL ES 2.0 Mesa 25.0.7
+```
+
+This confirms **system-wide GLX library selection and R300 acceleration on installed Q4OS**, not just the earlier live-DVD test. Still to verify: after-reboot persistence, whether macOS Lion boots normally, Chromium GPU acceleration (ANGLE/GLES3 errors were observed earlier), and effects of future Mesa updates. Keep package rollback commands available.
+
+Successful CI run: https://github.com/Forenzo/PearMac-Live/actions/runs/42521826824
