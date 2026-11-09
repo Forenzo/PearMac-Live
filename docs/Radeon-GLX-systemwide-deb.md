@@ -1,6 +1,6 @@
 # System-wide Radeon X1600 DRI2 GLX integration for Q4OS 6
 
-**Status (8 November 2026): VERIFIED on installed Q4OS 6 on the real iMac5,1.** GitHub Actions build #4 succeeded, including package installation/library selection/removal in CI. The user installed the .deb on the iMac and confirmed hardware GLX without LD_LIBRARY_PATH. Persistence after reboot and performance across applications remain to be verified.
+**Status (8 November 2026): VERIFIED, INSTALLED AND PERSISTENT AFTER REBOOT.** On the real iMac5,1 running installed Q4OS 6, the system-wide Mesa R300 DRI2 package enables hardware OpenGL 2.1 through ordinary GLX without per-application overrides. GitHub Actions build #4 passed compilation, package installation, library selection and rollback checks. Chromium ANGLE GPU support and compatibility with every GLX application remain separate questions.
 
 This extension of the [verified field guide](Q4OS6-iMac51-Radeon-X1600-working-guide.md) lets all **GLX** programs resolve the custom DRI2-compatible Mesa vendor library automatically. It does **not** upgrade the GPU, provide hardware WebGL2/GLES3/Vulkan, or guarantee Chromium's GPU process works.
 
@@ -16,7 +16,7 @@ The packaging builder [scripts/package-mesa-dri2.sh](../scripts/package-mesa-dri
 - Pins dependencies to `libglx-mesa0 (= 25.0.7-2+deb13u1)` and `mesa-libgallium (= 25.0.7-2+deb13u1)`; a different installed Mesa version will **block installation**. Rebuild on any future Debian Mesa update.
 - Is named `pearmac-mesa-r300-dri2` and can be removed with `sudo apt remove pearmac-mesa-r300-dri2`.
 
-## Build and download
+## Build and download the verified package
 
 1. Open GitHub Actions: https://github.com/Forenzo/PearMac-Live/actions/workflows/build-mesa-dri2.yml
 2. Run **Build Mesa 25 R300 legacy DRI2** on `main`.
@@ -24,7 +24,7 @@ The packaging builder [scripts/package-mesa-dri2.sh](../scripts/package-mesa-dri
 4. CI then installs the .deb in a disposable **Debian 13** container, checks that `ldconfig` resolves the custom GLX library and its own Gallium private library, uninstalls the package, and checks that the custom cache entry disappears.
 5. Only after **all** checks pass should the package artifact be used on the iMac. CI cannot validate real RV530 hardware graphics.
 
-The original artifact `PearMac-Mesa25-R300-Legacy-DRI2-TEST` remains for fallback/per-app testing.
+The workflow also produces the original `PearMac-Mesa25-R300-Legacy-DRI2-TEST` archive, which was used **first** to validate the fix per application on the live DVD. That was a test stage, not the final installation method. The verified deployment is the system-wide `.deb`.
 
 ## Prepare the iMac
 
@@ -40,7 +40,7 @@ Expected package versions: `25.0.7-2+deb13u1` for both. If they differ, **stop**
 
 For a safe recovery route, know how to enter a text console with **Ctrl+Alt+F2** (or via the appropriate key combination on the attached keyboard) and retain the bootable Q4OS live DVD. Make a backup of important data before any system-wide graphics changes.
 
-## Install the new package
+## Install the system-wide package
 
 After downloading the artifact, extract it (GitHub Actions artifacts are ZIPs) to e.g. `~/Downloads/pearmac-deb`.
 
@@ -83,13 +83,13 @@ If the GUI is unstable, use a text TTY (Ctrl+Alt+F2), sign in and run the same c
 
 Do not apply this AMD/R300-specific package to other computers or Mesa versions, and do not overwrite system `libgallium` files.
 
-## Evidence and outstanding work
+## Verified milestones and remaining limitations
 
-- **Verified** (live environment): Xorg KMS/EXA, standalone EGL r300, GLX hardware acceleration when overriding libraries per-process.
-- **Verified** (prior CI): Debian Mesa 25.0.7 `-Dlegacy-x11=dri2` builds and uploads a per-app test archive.
-- **Pending**: new system-wide package build + CI install/remove verification.
-- **Pending**: actual Q4OS installed-machine GLX test **without** environment override and verification after reboot.
-- **Not verified**: Chromium ANGLE GPU compositing, WebGL2, Video Decode, modern OpenGL.
+- **Initial hardware proof:** isolated per-app GLX test on Q4OS 6 live DVD using `LD_LIBRARY_PATH`, reporting Radeon RV530 and `Accelerated: yes`.
+- **Permanent package:** GitHub Actions [run #4](https://github.com/Forenzo/PearMac-Live/actions/runs/42521826824) successfully built the `.deb` and checked install, custom-library selection, private Gallium resolution, and uninstall/rollback.
+- **Actual installed iMac:** installed `pearmac-mesa-r300-dri2`, then ran unwrapped `env -u LD_LIBRARY_PATH glxinfo -B` with Radeon RV530 and `Accelerated: yes`.
+- **After reboot:** ordinary `glxinfo -B` still reported Radeon RV530 and hardware acceleration. **The system-wide integration is verified and persistent.**
+- **Outside this result:** Chromium GPU acceleration, newer GL/GLES/Vulkan features, macOS Lion boot and future Mesa upgrades have not been established by these GLX tests.
 
 ## Confirmed installed-hardware success (8 November 2026)
 
@@ -111,7 +111,7 @@ OpenGL shading language version string: 1.20
 OpenGL ES profile version string: OpenGL ES 2.0 Mesa 25.0.7
 ```
 
-This confirms **system-wide GLX library selection and R300 acceleration on installed Q4OS**, not just the earlier live-DVD test. Still to verify: after-reboot persistence, whether macOS Lion boots normally, Chromium GPU acceleration (ANGLE/GLES3 errors were observed earlier), and effects of future Mesa updates. Keep package rollback commands available.
+This confirms **system-wide GLX library selection and R300 acceleration on installed Q4OS**, not just the earlier live-DVD test. The subsequent reboot check below confirms persistence. Other outstanding concerns are macOS Lion bootability, Chromium ANGLE GPU acceleration, and handling future Mesa upgrades. Keep package rollback commands available.
 
 Successful CI run: https://github.com/Forenzo/PearMac-Live/actions/runs/42521826824
 
