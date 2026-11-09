@@ -1,10 +1,10 @@
 # PearMac iMac5,1: working Q4OS 6 / Radeon X1600 field guide
 
 **Test date:** 8 November 2026  
-**Status:** LIVE DVD + Radeon 2D + per-process hardware OpenGL **verified on actual hardware**. Internal-disk installation was later **reported complete by the user**; post-install bootloader state, Lion preservation, and system-wide Radeon acceleration still require separate verification.  
+**Status:** **Installed Q4OS 6 successfully boots the iMac5,1 with system-wide Radeon X1600 hardware-accelerated OpenGL 2.1, verified again after reboot.** The first proof was a per-process live-DVD test; the completed solution is the reversible Debian package. macOS Lion bootability remains unverified.  
 **Test machine:** White Intel iMac5,1 (late 2006), Core 2 Duo (64-bit processor, 32-bit Apple EFI), ATI Mobility Radeon X1600 / RV530 / M56-P (PCI 1002:71c5, Apple subsystem 106b:0080), 128 MiB VRAM.
 
-> This is the new recommended **working reference configuration** for this hardware. The older Debian 12 PearMac XFCE USB/kernel 6.1 remaster remains in Git history as an experiment, not the proven route. Do not assume a successful live DVD automatically implies an installed BIOS-mode GRUB boot.
+> This is the **working, installed reference configuration** for this hardware. The older Debian 12 PearMac XFCE USB/kernel 6.1 remaster remains in Git history as an experiment. Successful internal Q4OS boot is now confirmed; macOS Lion's post-install boot path has not been checked.
 
 ## 1. What finally worked
 
@@ -98,7 +98,7 @@ Key Meson arguments:
 
 The first CI run failed **before compilation** because the extra `deb-src` repository specified Debian's keyring as `.gpg` when that container used `.pgp`. Changing `Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp` fixed APT; run #2 completed compilation and artifact upload.
 
-## 7. Exact successful GPU test on Q4OS
+## 7. Initial per-application test (historical validation)
 
 Download the workflow artifact on Q4OS and unpack to `~/mesa-test`:
 
@@ -142,21 +142,7 @@ OpenGL shading language version string: 1.20
 OpenGL ES profile version string: OpenGL ES 2.0 Mesa 25.0.7
 ```
 
-A convenient opt-in wrapper:
-
-```bash
-cat > ~/mesa-test/run-radeon.sh <<'EOF'
-#!/bin/bash
-MESA_LIB="$HOME/mesa-test/pearmac-mesa-dri2/lib/x86_64-linux-gnu"
-export LD_LIBRARY_PATH="$MESA_LIB${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-export LIBGL_DRI3_DISABLE=1
-exec "$@"
-EOF
-chmod +x ~/mesa-test/run-radeon.sh
-~/mesa-test/run-radeon.sh glxinfo -B
-```
-
-**Safety:** Do **not** overwrite `/usr/lib`, do not set `LD_LIBRARY_PATH` globally, and do not install these libraries system-wide until they are tested more comprehensively. These are **test** libraries built against the same Debian generation, not a signed distribution package.
+This per-application override was used **only to establish that the rebuilt DRI2 GLX library works** before changing the system's library selection. It is no longer needed on the installed iMac. The working deployment is the **system-wide** `pearmac-mesa-r300-dri2` package described in [the permanent installation guide](Radeon-GLX-systemwide-deb.md). It installs isolated GLX/Gallium libraries under `/opt/pearmac-radeon` and updates `ldconfig` without overwriting Debian-owned Mesa files. The same CI workflow, [successful run #4](https://github.com/Forenzo/PearMac-Live/actions/runs/42521826824), validated installation and rollback; on the actual iMac, ordinary `glxinfo -B` reported `ATI RV530` and `Accelerated: yes` both after installation and after reboot.
 
 ## 8. Chromium caveat
 
@@ -168,7 +154,7 @@ Chromium installed via Q4OS's Add/Remove Programs could be launched with:
 
 It **opened and was usable**, but logged `ANGLE Display::initialize error 12289`, `Could not create a backing OpenGL context`, `GLES3 is unsupported and ES version fallback is disabled`, and `Exiting GPU process due to errors during initialization`. Thus **Chromium GPU acceleration is NOT confirmed**; fallback is likely. `chrome://gpu` is the correct place to check actual graphics feature status. The successful standalone GLX test does not imply Chromium supports the RV530's limited OpenGL feature set.
 
-## 9. Internal disk installation: planned, NOT verified
+## 9. Internal disk installation: historical partition plan, Q4OS boot confirmed
 
 **Update (8 November 2026):** the user subsequently reported that Q4OS was fully installed and operating. The original partitioning details below document the planned layout; post-install GPT/hybrid-MBR details and successful macOS Lion boot remain unverified.
 
@@ -187,7 +173,7 @@ Hybrid MBR (before installation):
   #3  sectors 94423040..488396799 type 07 (Windows), ACTIVE
 ```
 
-A manual Calamares **pending** configuration screenshot showed: EFI/HFS+ preserved; 8.61 MiB **unformatted BIOS boot** partition in the gap with `bios_grub` flag, about 120 MiB gap left; new **ext4 Q4OS root** at `/` covering 187.86 GiB formerly occupied by Boot Camp; GRUB target **MBR of /dev/sda**, not the CF-card reader `/dev/sdb`. The installer correctly displayed the GPT-on-BIOS advisory requesting an 8 MB unformatted `bios_grub` partition. This **does not guarantee** hybrid-MBR consistency or bootloader success.
+The original manual Calamares **pre-install** configuration screenshot showed: EFI/HFS+ preserved; 8.61 MiB **unformatted BIOS boot** partition in the gap with `bios_grub` flag, about 120 MiB gap left; new **ext4 Q4OS root** at `/` covering 187.86 GiB formerly occupied by Boot Camp; GRUB target **MBR of /dev/sda**, not the CF-card reader `/dev/sdb`. The installer correctly displayed the GPT-on-BIOS advisory requesting an 8 MB unformatted `bios_grub` partition. The installed Q4OS subsequently booted successfully, but the resulting partition table and Lion bootability have not been inspected.
 
 A 15.3 GB exFAT CF card labelled `EOS_DIGITAL` was mounted as `/media/adminq/EOS_DIGITAL`. Before installation, the user successfully backed up GPT metadata using:
 
@@ -202,7 +188,7 @@ sudo dd if=/dev/sda of=/media/adminq/EOS_DIGITAL/imac-original-mbr.bin bs=512 co
 sync
 ```
 
-These **partition-table backups do not back up Lion files**. Actual data backups are required separately. Be cautious: tools rewriting the GPT may convert a hybrid MBR into a protective MBR; ordinary Calamares operations alone do not prove Apple boot compatibility. **Do not claim the internal install has succeeded until both Q4OS and Lion have been booted after installation.** A conventional GRUB BIOS-boot GPT design may require revisiting hybrid-MBR synchronization or another boot-management solution.
+These **partition-table backups do not back up Lion files**. Actual data backups are required separately. Be cautious: tools rewriting the GPT may convert a hybrid MBR into a protective MBR; ordinary Calamares operations alone do not prove Apple boot compatibility. **Q4OS installation and boot are confirmed; the state and bootability of macOS Lion remain unverified.** A conventional GRUB BIOS-boot GPT design may require revisiting hybrid-MBR synchronization or another boot-management solution.
 
 Read-only layout checks before changes:
 
@@ -216,13 +202,13 @@ test -d /sys/firmware/efi && echo EFI || echo BIOS
 
 `gdisk` can inspect hybrid MBR read-only with `sudo gdisk /dev/sda` then `r`, `o`, `q` (quit **without writing**).
 
-## 10. Future PearMac development
+## 10. Current state and follow-up work
 
-1. Treat the **working Q4OS 6 Debian 13 Trinity DVD + Radeon EXA** as the reference instead of relying on the old Debian 12 safe-mode-only USB experiment.
-2. Preserve the independently working `build-mesa-dri2.yml` GitHub Actions workflow; it already reproduced the tested libraries.
-3. After the internal installation is genuinely verified, record **both** Linux and macOS boot results, GPT/MBR post-install state and installer outcome.
-4. Test Chromium, other GLX applications, stability, and graphics performance; only then consider controlled packaging or integration into a new live ISO. Avoid system-wide Mesa replacement until rollback is documented.
-5. For public reproductions, point users to the workflow and explicit commands, not a short-lived artifact URL.
+1. **Verified installed Q4OS graphics:** Radeon KMS/EXA and the packaged `-Dlegacy-x11=dri2` GLX fix, with `Accelerated: yes` after reboot using ordinary `glxinfo -B`.
+2. **Recommended integration:** Install the version-matched `pearmac-mesa-r300-dri2` package using the [system-wide guide](Radeon-GLX-systemwide-deb.md), rather than setting `LD_LIBRARY_PATH` per app.
+3. **Future Mesa updates:** the package requires the specified Debian Mesa version. Rebuild and retest before updating Mesa to an incompatible version; keep the documented rollback route.
+4. **Not yet established:** Chromium ANGLE GPU acceleration, macOS Lion boot after repartitioning, and compatibility of every OpenGL application.
+5. Continue PearMac hardware and media features on top of this working Q4OS foundation.
 
 ## References
 
@@ -232,8 +218,26 @@ test -d /sys/firmware/efi && echo EFI || echo BIOS
 - Legacy Mac optical ISO patch project: https://github.com/mattgadient/isomacprog
 - PearMac build workflow: https://github.com/Forenzo/PearMac-Live/blob/main/.github/workflows/build-mesa-dri2.yml
 
-*Evidence level: live boot, EXA, b43 and corrected GLX success directly observed in session logs. Internal installation and permanent boot remain pending.*
+**Evidence level:** direct live-hardware per-app test, CI package install/remove, successful installed-iMac package test, and independent confirmation of hardware GLX **after reboot**. Lion's post-install boot is not verified.
 
-## 11. Post-install update and system-wide GLX packaging (8 November 2026)
+## 11. Permanent system-wide installation: confirmed (8 November 2026)
 
-The user reported Q4OS fully installed and operating on the iMac and asked for permanent graphics integration. A reversible, isolated system-wide Debian package builder has been added to [the existing Mesa workflow](../.github/workflows/build-mesa-dri2.yml), with installation and rollback instructions in [Radeon-GLX-systemwide-deb.md](Radeon-GLX-systemwide-deb.md). **The new package is not yet verified by CI or on the installed iMac.**
+After the original per-process test established that Mesa 25.0.7 with `-Dlegacy-x11=dri2` restores Radeon GLX acceleration, a Debian package was built in the **same** GitHub Actions workflow. Successful [run #4](https://github.com/Forenzo/PearMac-Live/actions/runs/42521826824) published `PearMac-Radeon-Systemwide-DEB-EXPERIMENTAL`, containing `pearmac-mesa-r300-dri2_25.0.7-2+deb13u1.pearmac1_amd64.deb`.
+
+The package installs `libGLX_mesa.so.0` to `/opt/pearmac-radeon/lib`, the matching Gallium library to `/opt/pearmac-radeon/private`, and `/etc/ld.so.conf.d/00-pearmac-radeon.conf`. This changes default system GLX resolution without overwriting stock Debian Mesa files. CI verified library selection and package removal. On the installed iMac, APT reported successful setup and:
+
+```bash
+env -u LD_LIBRARY_PATH glxinfo -B
+```
+
+reported `ATI RV530`, `Accelerated: yes`, and `OpenGL 2.1 Mesa 25.0.7`.
+
+**After reboot**, ordinary `glxinfo -B | grep -E 'Device:|Accelerated:|OpenGL renderer'` independently confirmed:
+
+```text
+Device: ATI RV530 (0x71c5)
+Accelerated: yes
+OpenGL renderer string: ATI RV530
+```
+
+**Result:** the GLX fix is installed **globally and persistently**, with no special launcher. See [installation, package-version guard, and rollback instructions](Radeon-GLX-systemwide-deb.md).
