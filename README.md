@@ -1,33 +1,28 @@
 # PearMac Live — iMac5,1 Radeon X1600 Linux project
 
-**Current recommended reference: Q4OS 6 Andromeda (Debian 13 / Trinity) live DVD, BIOS boot + Mesa 25 R300 legacy DRI2 GLX fix.**
+**Recommended configuration: Q4OS 6 Andromeda (Debian 13 / Trinity), legacy BIOS boot, with the PearMac system-wide Mesa R300 DRI2 package.**
 
-The white Intel iMac5,1 (late 2006, 32-bit Apple EFI / 64-bit Core 2 Duo, ATI Mobility Radeon X1600 RV530) now has a **verified working Q4OS 6 live DVD**, native-display Radeon modesetting, accelerated Xorg EXA, functional Broadcom b43 Wi-Fi and **hardware OpenGL 2.1**, tested through a custom Mesa 25.0.7 userspace GLX library.
+The late-2006 white Intel iMac5,1 (Core 2 Duo, 32-bit Apple EFI, ATI Mobility Radeon X1600 / RV530 with 128 MB VRAM) **boots installed Q4OS 6 and provides Radeon-accelerated OpenGL 2.1 across GLX applications**. The solution has been verified on the actual machine **after a reboot**, without any per-app launcher or special environment variables. Native 1680×1050 Radeon modesetting, Xorg EXA acceleration and Broadcom b43 Wi-Fi were also confirmed.
 
-**START HERE:** [Full reproduction and troubleshooting guide](docs/Q4OS6-iMac51-Radeon-X1600-working-guide.md).
+**[Full Q4OS/iMac reproduction guide](docs/Q4OS6-iMac51-Radeon-X1600-working-guide.md)** · **[System-wide Radeon Mesa installer and rollback](docs/Radeon-GLX-systemwide-deb.md)**
 
-**Important limits:** The Mesa fix was verified with `LD_LIBRARY_PATH` on `glxinfo -B`, **not** installed system-wide. Chromium launched but logged ANGLE/GLES3 GPU initialization failures; browser GPU acceleration is unverified. The permanent internal-disk installation was **not yet complete or confirmed** at documentation time; preserve Lion and take backups before touching the hybrid GPT/MBR.
+## Radeon graphics fix: verified and integrated
 
-## Reproduce the verified Mesa acceleration
+Debian Mesa 25.0.7 was rebuilt with `-Dlegacy-x11=dri2` because the iMac's Radeon X.Org driver advertises DRI2, while stock Mesa's GLX client fell back to software rendering. We **first tested the rebuilt libraries on the live DVD on a per-application basis** using `LD_LIBRARY_PATH`, confirming `ATI RV530` and `Accelerated: yes`. Once that succeeded, we packaged the same GLX implementation and matching Gallium library as an isolated, reversible **system-wide Debian package**.
 
-The separate, manually triggered [Build Mesa 25 R300 legacy DRI2 workflow](.github/workflows/build-mesa-dri2.yml) uses a Debian 13 container and builds Mesa 25.0.7 with `-Dlegacy-x11=dri2`. Successful [run #2](https://github.com/Forenzo/PearMac-Live/actions/runs/42478406578) produced `PearMac-Mesa25-R300-Legacy-DRI2-TEST`. Artifacts expire; rerun the workflow.
+The [Mesa DRI2 GitHub Actions workflow](.github/workflows/build-mesa-dri2.yml) builds both the historical test archive and the permanent package. **Successful [run #4](https://github.com/Forenzo/PearMac-Live/actions/runs/42521826824)** passed package installation, loader-selection and uninstall checks. The resulting package `pearmac-mesa-r300-dri2_25.0.7-2+deb13u1.pearmac1_amd64.deb` was then successfully installed on the iMac.
 
-On a Q4OS 6 live system, unpack the artifact to `~/mesa-test` and run:
+The package installs the custom `libGLX_mesa.so.0` under `/opt/pearmac-radeon/lib`, its matching Gallium implementation under `/opt/pearmac-radeon/private`, and an `ld.so.conf.d` entry. Debian-owned Mesa libraries are **not overwritten**. Removal via `sudo apt remove pearmac-mesa-r300-dri2` restores the normal loader configuration. **The package is tied to the matching Mesa 25.0.7-2+deb13u1 version; rebuild before migrating to another Mesa version.**
 
-```bash
-MESA_LIB="$HOME/mesa-test/pearmac-mesa-dri2/lib/x86_64-linux-gnu"
-LD_LIBRARY_PATH="$MESA_LIB" LIBGL_DRI3_DISABLE=1 glxinfo -B
+After a normal reboot, the user ran ordinary `glxinfo -B` without wrappers or overrides:
+
+```text
+Device: ATI RV530 (0x71c5)
+Accelerated: yes
+OpenGL renderer string: ATI RV530
 ```
 
-Observed `OpenGL renderer string: ATI RV530`, `Accelerated: yes`, `OpenGL version string: 2.1 Mesa 25.0.7`. Do **not** overwrite system Mesa files just to reproduce this test.
-
-## Experimental system-wide GLX integration (new)
-
-A reversible Debian package build has been added to the same Mesa GitHub Actions workflow: `PearMac-Radeon-Systemwide-DEB-EXPERIMENTAL`. It places a legacy DRI2-capable Mesa GLX vendor library in a separate `/opt` directory, with its matching Gallium library private; it does **not** overwrite Debian's system Mesa files. Installation changes GLX library resolution globally, so proceed only after the new CI build passes and keep a text-console/live-DVD recovery option.
-
-**[System-wide Debian package: installation, testing and rollback](docs/Radeon-GLX-systemwide-deb.md)**
-
-**Verified 8 November 2026:** build #4 passed CI installation and rollback checks, and the package was installed on the actual iMac running Q4OS. An unwrapped `env -u LD_LIBRARY_PATH glxinfo -B` reports `ATI RV530` and `Accelerated: yes`. After-reboot behavior, Chromium GPU acceleration, and the macOS Lion boot path are not yet verified.
+**Result: system-wide R300 OpenGL 2.1 acceleration verified and persistent after reboot.** The per-app method was a temporary validation step, **not the required operating procedure**. This does **not** imply support for modern OpenGL, GLES3, Vulkan or Chromium's ANGLE GPU path; Chromium GPU compositing remains unverified. macOS Lion boot compatibility after repartitioning also remains unverified.
 
 ## PearMac classic experience on Q4OS 6
 
@@ -44,4 +39,4 @@ The previous Debian 12.0.0 XFCE live USB image/kernel `6.1.190-pearmac-radeon` n
 
 The original [Build PearMac live USB](.github/workflows/build.yml), Wi-Fi rescue and older ISO workflows have been **left unchanged** to preserve reproducibility; new development should start from the working Debian 13/Q4OS findings.
 
-See the **full field guide** for hardware IDs, optical boot specifics, GPU diagnostics, exact Mesa flags, GitHub Actions failure/fix, Chromium caveat, and the pending Lion-preserving installation layout.
+See the **full field guide** for hardware IDs, optical boot specifics, GPU diagnostics, exact Mesa flags, Chromium limitations, and the historical Lion-preserving installation plan (Lion boot remains unverified).
