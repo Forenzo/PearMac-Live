@@ -33,6 +33,12 @@ The previous PearMac feature plan is being restored **on top of the installed, h
 
 On a checked-out repository, run `bash scripts/install-legacy-features.sh audit` to identify the actual devices, or `bash scripts/install-legacy-features.sh core` to install the available Debian 13 prerequisite packages. **Hardware-specific remapping/sync functions remain pending until verified; the installer never reformats media or changes the Radeon/boot configuration.**
 
+## YouTube lounge mode (LibreWolf / Apple Remote roadmap)
+
+The [PearMac YouTube Lounge launcher](scripts/pearmac-youtube.sh) opens YouTube using the **existing LibreWolf profile**, preserving Lightweight YouTube, recommendations, comments, subscriptions and the user's extensions. Use `bash scripts/pearmac-youtube.sh` and **F11** for ordinary fullscreen; `bash scripts/pearmac-youtube.sh kiosk` is optional and exits with Alt+F4. The original Apple Remote's event codes must be detected before custom directional navigation and Front Row-like launcher integration can be implemented.
+
+[YouTube Lounge setup, Trinity menu shortcut and Apple Remote discovery guide](docs/PearMac-YouTube-Lounge.md)
+
 ## Earlier Debian 12 PearMac experiments (historical)
 
 The previous Debian 12.0.0 XFCE live USB image/kernel `6.1.190-pearmac-radeon` needed `nomodeset`/safe graphics to reach the desktop. Wi-Fi was eventually fixed, but normal Radeon modesetting failed to display. Those experiments remain in the repository for historical reference and may still be useful, but they **are not the recommended or proven Radeon-accelerated solution**.
