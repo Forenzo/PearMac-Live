@@ -13,7 +13,7 @@ import sys
 import tkinter as tk
 
 try:
-    from evdev import InputDevice, categorize, ecodes, list_devices
+    from evdev import InputDevice, ecodes
 except ImportError:
     sys.exit("Install python3-evdev: sudo apt install python3-evdev")
 
@@ -40,12 +40,47 @@ ENTRIES = [
 
 
 def find_receiver():
-    """Discover by USB vendor/product, never by volatile event number."""
-    for path in list_devices():
-        dev = InputDevice(path)
-        if dev.info.vendor == APPLE_VENDOR and dev.info.product == APPLE_IR_PRODUCT:
+    """Discover the receiver from sysfs even if evdev hides unreadable devices.
+
+    Read-only discovery via /sys/class/input avoids relying on event3 or on
+    evdev.list_devices(), which may silently omit inaccessible devices.
+    """
+    candidates = []
+    for node in sorted(Path("/sys/class/input").glob("event*")):
+        try:
+            name = (node / "device/name").read_text().strip()
+        except OSError:
+            continue
+        if "IR Receiver" not in name or "Apple" not in name:
+            continue
+        path = "/dev/input/" + node.name
+        candidates.append(path)
+    for path in candidates:
+        try:
+            dev = InputDevice(path)
+        except PermissionError:
+            print("Apple IR Receiver found at " + path +
+                  " but access is denied for user " + str(os.getuid()) +
+                  ". Check: ls -l " + path + " ; getfacl " + path,
+                  file=sys.stderr)
+            continue
+        except OSError as exc:
+            print("Cannot open " + path + ": " + str(exc), file=sys.stderr)
+            continue
+        if (dev.info.vendor == APPLE_VENDOR and
+                dev.info.product == APPLE_IR_PRODUCT):
+            return dev
+        # Some kernel HID input layers expose a different evdev product ID,
+        # while the readable sysfs name remains the observed Apple receiver.
+        if "Apple" in dev.name and "IR Receiver" in dev.name:
+            print("Receiver matched by name; evdev ID " +
+                  f"{dev.info.vendor:04x}:{dev.info.product:04x}",
+                  file=sys.stderr)
             return dev
         dev.close()
+    if not candidates:
+        print("Apple IR Receiver absent from /sys/class/input; check lsusb "
+              "and /proc/bus/input/devices.", file=sys.stderr)
     return None
 
 
@@ -81,7 +116,7 @@ class Lounge:
     def connect(self):
         self.device = find_receiver()
         if not self.device:
-            print("Apple IR Receiver 05ac:8240 not found. Retrying.", file=sys.stderr)
+            print("Apple IR Receiver not ready; retrying.", file=sys.stderr)
             return
         try:
             # Exclusive input avoids Trinity also treating Up/Down as volume.
