@@ -150,7 +150,8 @@ class Lounge:
             run_utility(["xdotool", "key", "--clearmodifiers",
                          "Left" if action == "LEFT" else "Right"])
         elif action == "SELECT":
-            if not run_utility(["playerctl", "play-pause"]):
+            result = subprocess.run(["playerctl", "play-pause"], capture_output=True) if shutil.which("playerctl") else None
+            if result is None or result.returncode != 0:
                 run_utility(["xdotool", "key", "--clearmodifiers", "space"])
 
     def visible(self):
