@@ -16,7 +16,7 @@ case "$1" in
     sudo apt-get install python3-evdev python3-tk xdotool playerctl pulseaudio-utils
     mkdir -p "$(dirname "$auto")" "$(dirname "$menu")"
     # Freedesktop .desktop Exec supports a quoted absolute filename.
-    escaped="$(printf '%s' "$controller" | sed 's/\\/\\\\/g;s/"/\\"/g')"
+    escaped="$controller"
     cat > "$auto" <<EOF
 [Desktop Entry]
 Type=Application
